@@ -130,7 +130,7 @@ func obfuscate(pkgName, outPath string) bool {
 	for _, operatingSytem := range operatingSytems {
 		for _, arch := range arches {
 			if operatingSytem == "windows" {
-				newPkg += ".exe"
+				outPath += ".exe"
 			}
 
 			arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", outPath, newPkg}
