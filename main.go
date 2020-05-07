@@ -129,11 +129,13 @@ func obfuscate(pkgName, outPath string) bool {
 
 	for _, operatingSytem := range operatingSytems {
 		for _, arch := range arches {
+			packagePath := outPath
+
 			if operatingSytem == "windows" {
-				outPath += ".exe"
+				packagePath += ".exe"
 			}
 
-			arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", outPath, newPkg}
+			arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", packagePath, newPkg}
 			environment := []string{
 				"GOROOT=" + ctx.GOROOT,
 				"GOARCH=" + arch,
