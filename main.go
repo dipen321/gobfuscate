@@ -22,6 +22,8 @@ var (
 	noStaticLink        bool
 	preservePackageName bool
 	verbose             bool
+	goos                string
+	goarch              string
 )
 
 func main() {
@@ -34,6 +36,8 @@ func main() {
 		"no encrypted package name for go build command (works when main package has CGO code)")
 	flag.BoolVar(&verbose, "verbose", false, "verbose mode")
 	flag.StringVar(&tags, "tags", "", "tags are passed to the go compiler")
+	flag.StringVar(&goos, "goos", build.Default.GOOS, "the GOOS variables to build on (can be multiple)")
+	flag.StringVar(&goarch, "goarch", build.Default.GOARCH, "the GOARCH variable to build on (can be multiple)")
 
 	flag.Parse()
 
@@ -68,8 +72,6 @@ func obfuscate(pkgName, outPath string) bool {
 		}
 		defer os.RemoveAll(newGopath)
 	}
-
-	log.Println("Copying GOPATH...")
 
 	if err := CopyGopath(pkgName, newGopath, keepTests); err != nil {
 		fmt.Fprintln(os.Stderr, "Failed to copy into a new GOPATH:", err)
@@ -122,35 +124,42 @@ func obfuscate(pkgName, outPath string) bool {
 	goCache := newGopath + "/cache"
 	os.Mkdir(goCache, 0755)
 
-	arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", outPath, newPkg}
-	environment := []string{
-		"GOROOT=" + ctx.GOROOT,
-		"GOARCH=" + ctx.GOARCH,
-		"GOOS=" + ctx.GOOS,
-		"GOPATH=" + newGopath,
-		"PATH=" + os.Getenv("PATH"),
-		"GOCACHE=" + goCache,
-	}
+	operatingSytems := strings.Split(goos, " ")
+	arches := strings.Split(goarch, " ")
 
-	cmd := exec.Command("go", arguments...)
-	cmd.Env = environment
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	for _, operatingSytem := range operatingSytems {
+		for _, arch := range arches {
+			arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", outPath, newPkg}
+			environment := []string{
+				"GOROOT=" + ctx.GOROOT,
+				"GOARCH=" + arch,
+				"GOOS=" + operatingSytem,
+				"GOPATH=" + newGopath,
+				"PATH=" + os.Getenv("PATH"),
+				"GOCACHE=" + goCache,
+			}
 
-	if verbose {
-		fmt.Println()
-		fmt.Println("[Verbose] Temporary path:", newGopath)
-		fmt.Println("[Verbose] Go build command: go", strings.Join(arguments, " "))
-		fmt.Println("[Verbose] Environment variables:")
-		for _, envLine := range environment {
-			fmt.Println(envLine)
+			cmd := exec.Command("go", arguments...)
+			cmd.Env = environment
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			if verbose {
+				fmt.Println()
+				fmt.Println("[Verbose] Temporary path:", newGopath)
+				fmt.Println("[Verbose] Go build command: go", strings.Join(arguments, " "))
+				fmt.Println("[Verbose] Environment variables:")
+				for _, envLine := range environment {
+					fmt.Println(envLine)
+				}
+				fmt.Println()
+			}
+
+			if err := cmd.Run(); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed to compile:", err)
+				return false
+			}
 		}
-		fmt.Println()
-	}
-
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to compile:", err)
-		return false
 	}
 
 	return true
