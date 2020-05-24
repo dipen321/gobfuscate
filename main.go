@@ -143,6 +143,7 @@ func obfuscate(pkgName, outPath string) bool {
 				"GOPATH=" + newGopath,
 				"PATH=" + os.Getenv("PATH"),
 				"GOCACHE=" + goCache,
+				"CGO_ENABLED=" + os.Getenv("CGO_ENABLED"),
 			}
 
 			cmd := exec.Command("go", arguments...)
