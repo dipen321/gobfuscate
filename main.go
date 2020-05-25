@@ -127,12 +127,19 @@ func obfuscate(pkgName, outPath string) bool {
 	operatingSytems := strings.Split(goos, " ")
 	arches := strings.Split(goarch, " ")
 
+	// Build once for each OS/arch combo
 	for _, operatingSytem := range operatingSytems {
 		for _, arch := range arches {
 			packagePath := outPath
 
 			if operatingSytem == "windows" {
 				packagePath += ".exe"
+			}
+
+			cgo := os.Getenv("CGO_ENABLED_" + operatingSytem + "_" + arch)
+
+			if cgo == "" {
+				cgo = "0"
 			}
 
 			arguments := []string{"build", "-ldflags", ldflags, "-tags", tags, "-o", packagePath, newPkg}
@@ -143,7 +150,10 @@ func obfuscate(pkgName, outPath string) bool {
 				"GOPATH=" + newGopath,
 				"PATH=" + os.Getenv("PATH"),
 				"GOCACHE=" + goCache,
-				"CGO_ENABLED=" + os.Getenv("CGO_ENABLED"),
+				"CGO_ENABLED=" + cgo,
+				"CC=" + os.Getenv("CC_"+operatingSytem+"_"+arch),
+				"CXX=" + os.Getenv("CXX_"+operatingSytem+"_"+arch),
+				"MACOSX_DEPLOYMENT_TARGET=" + os.Getenv("MACOSX_DEPLOYMENT_TARGET"),
 			}
 
 			cmd := exec.Command("go", arguments...)
